@@ -15,13 +15,28 @@ using namespace std;
 #include <queue>
 #include <arpa/inet.h>
 #include <map>
+#include <semaphore.h>
+#include <pthread.h>
 
+#define MAX_THREADS		30
 #define CRLF "\r\n"
+// Permissions are READ/WRITE for OWNER and READ for others
+// Only for use on systems where sem_init/sem_destroy are deprecated (OSX)
+#define SEM_PERMISSIONS	0644
 
 // Send/receive message buf size
 #define MAX_MSG_SIZE	1000000
 
+// Set to 0 to disable debug messages
+#define DEBUG			0
+
+// Multithreading and thread safety
+pthread_mutex_t* count_mutex;
+sem_t* job_queue_count;
+char SEM_NAME[] = "sem";
 int server_s;
+std::queue<int>* socketQ;
+pthread_t* pool;
 
 // Error message for client
 const char* errMsg = "HTTP/1.0 500 'Internal Server Error'\r\n\r\n";
@@ -35,8 +50,16 @@ void error(const char *err) {
 	exit(EXIT_FAILURE);
 }
 
+
+
+void termination_handler(int signum); // new
 void receiveMsg(int s, int size, char *ptr, bool headerOnly);
 void sendMsg(int s, int size, char *ptr);
 void cleanOnError(int sock, char* &dataBuf);
-void consume(int clientSocket);
+void* consume(void* data);
+void cleanup(); // new
+void setupSigHandlers(); // new
+void initSynchronization(); // new
+void initThreadPool(); // new
+
 #endif /* PROXY_H_ */
